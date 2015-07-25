@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Print a message to standard error.
+function error() {
+  printf "error: %s\n" "${@}" >&2
+}
+
 # Bash completion function for build.
 #
 # Complete project names, then complete `make` targets if possible.
@@ -35,13 +40,31 @@ function _build() {
   return 0
 }
 
+
 function main() {
   local project="${1}"
   local target="${2:-}"
+  local platform=$(uname -s)
+
+  case $platform in
+    Linux)
+      MONITOR_PORT="${MONITOR_PORT:-/dev/ttyACM0}"
+      ;;
+    Darwin)
+      MONITOR_PORT="${MONITOR_PORT:-/dev/tty.usbmodem1411}"
+      ;;
+    *)
+      error "unsupported platform: ${platform}"
+      return 1
+      ;;
+  esac
+
+  MONITOR_PORT="MONITOR_PORT=${MONITOR_PORT}"
+
   if [[ -n $target ]]; then
-    make -C "${project}" "${target}"
+    make "${MONITOR_PORT}" -C "${project}" "${target}"
   else
-    make -C "${project}"
+    make "${MONITOR_PORT}" -C "${project}"
   fi
 }
 
