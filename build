@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# Bash completion function for build.
+#
+# Complete project names, then complete `make` targets if possible.
+function _build() {
+  COMPREPLY=()
+
+  local cur="${COMP_WORDS[COMP_CWORD]}"     # pointer to current word
+  local prev="${COMP_WORDS[COMP_CWORD-1]}"  # pointer to previous word
+  local do_make=true                        # complete `make` targets
+  local projects                            # projects to build
+
+  # Find projects containing a `Makefile`.
+  projects=$(find -maxdepth 2 -name Makefile -printf '%h ' | sed 's/\.\///g')
+
+  # Ignore `make` target completion if Bash completion is not available.
+  type _completion_loader >/dev/null 2>&1 && _completion_loader make
+  # _completion_loader returns 124 if successful.
+  if [[ $? -ne 124 ]]; then
+    do_make=false
+  fi
+
+  # 1. Complete project name.
+  if [[ $COMP_CWORD -eq 1 ]]; then
+    COMPREPLY=($(compgen -W "${projects}" -- "${cur}"))
+  # 2. Complete make target.
+  elif [[ $COMP_CWORD -eq 2 ]] && [[ $do_make == true ]]; then
+    # Extracted from `make` completion script.
+    COMPREPLY=(
+      $(make -C "${prev}" -npq .DEFAULT 2>/dev/null | \
+        sed -nf <(_make_target_extract_script -- "${cur}"))
+    )
+  fi
+  return 0
+}
+
+function main() {
+  local project="${1}"
+  local target="${2:-}"
+  if [[ -n $target ]]; then
+    make -C "${project}" "${target}"
+  else
+    make -C "${project}"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  complete -F _build build
+else
+  main "${@}"
+fi
