@@ -69,6 +69,7 @@ function main() {
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  complete -r build ./build 2>/dev/null
   complete -F _build build
 else
   main "${@}"
